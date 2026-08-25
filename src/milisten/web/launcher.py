@@ -67,9 +67,26 @@ def read_daemon_state() -> dict | None:
         return None
 
 
+def secure_home() -> Path:
+    """The daemon file holds the session token, and that token is enough to read any
+    file this user can read (add a local path as a source, then preview it)."""
+    root = home()
+    root.mkdir(parents=True, exist_ok=True)
+    root.chmod(0o700)
+    return root
+
+
+def open_private(path: Path, append: bool = False) -> int:
+    flags = os.O_WRONLY | os.O_CREAT | (os.O_APPEND if append else os.O_TRUNC)
+    fd = os.open(path, flags, 0o600)
+    os.fchmod(fd, 0o600)  # a pre-existing file keeps its old mode without this
+    return fd
+
+
 def write_daemon_state(state: dict) -> None:
-    home().mkdir(parents=True, exist_ok=True)
-    daemon_file().write_text(json.dumps(state))
+    secure_home()
+    with os.fdopen(open_private(daemon_file()), "w") as handle:
+        json.dump(state, handle)
 
 
 def clear_daemon_state() -> None:
@@ -101,14 +118,15 @@ def port_is_open(port: int, timeout: float = 0.25) -> bool:
         return sock.connect_ex((HOST, port)) == 0
 
 
-def serve(port: int, token: str, open_browser: bool) -> None:
+def serve(port: int, token: str, open_browser: bool, announce: bool = True) -> None:
     import uvicorn
 
     from . import server
 
     server.set_session_token(token)
     url = build_launch_url(port, token)
-    print(f"milisten ui  →  {url}")
+    if announce:
+        print(f"milisten ui  →  {url}")
     if open_browser:
         schedule_browser_open(url)
     uvicorn.run(server.app, host=HOST, port=port, log_level="warning")
@@ -129,15 +147,19 @@ def _start(port: int, open_browser: bool) -> int:
 
     chosen = port or pick_free_port()
     token = mint_token()
-    home().mkdir(parents=True, exist_ok=True)
-    with daemon_log().open("ab") as log:
+    secure_home()
+    with os.fdopen(open_private(daemon_log(), append=True), "ab", buffering=0) as log:
+        # The token goes over stdin, never argv: a command line is world-readable
+        # through `ps`, and this token grants local file reads via preview.
         child = subprocess.Popen(
-            [sys.executable, "-m", "milisten.web", str(chosen), token],
+            [sys.executable, "-m", "milisten.web", str(chosen)],
             stdout=log,
             stderr=log,
-            stdin=subprocess.DEVNULL,
+            stdin=subprocess.PIPE,
             start_new_session=True,
         )
+    with child.stdin as handle:
+        handle.write(f"{token}\n".encode())
 
     deadline = time.time() + START_TIMEOUT
     while time.time() < deadline:
