@@ -10,6 +10,7 @@ from typing import Protocol
 import numpy as np
 
 SAMPLE_RATE = 24_000
+REPO_ID = "hexgrad/Kokoro-82M"
 
 VOICES = {
     "heart": "af_heart",
@@ -36,13 +37,17 @@ class Kokoro:
     sample_rate: int = SAMPLE_RATE
 
     def __post_init__(self) -> None:
-        try:
-            from kokoro import KPipeline
-        except ImportError as exc:
-            raise RuntimeError(
-                "kokoro is not installed — run: uv sync (and brew install espeak-ng)"
-            ) from exc
-        self._pipeline = KPipeline(lang_code=self.lang)
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            try:
+                from kokoro import KPipeline
+            except ImportError as exc:
+                raise RuntimeError(
+                    "kokoro is not installed — run: uv sync (and brew install espeak-ng)"
+                ) from exc
+            self._pipeline = KPipeline(lang_code=self.lang, repo_id=REPO_ID)
 
     def speak(self, texts: Sequence[str]) -> Iterable[np.ndarray]:
         for text in texts:
