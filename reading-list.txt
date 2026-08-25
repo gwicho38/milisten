@@ -1,58 +1,70 @@
 # milisten reading list — format: area | title | ref
 #
-# ref is a URL or a local file path. Lines starting with # are ignored, so the
-# commented entries below are ready to activate once you paste a URL or drop a
-# local PDF next to them. Load with:  milisten import reading-list.txt
+# ref is a URL or a local file path. Lines starting with # are ignored.
+# Load with:  milisten import reading-list.txt   (re-runnable; skips duplicates)
 #
-# Only the arXiv entries carry URLs here: their IDs were given, and arXiv PDF
-# URLs are derivable from an ID. Every other ref is left blank on purpose rather
-# than guessed — a wrong URL silently renders the wrong document into audio.
+# Law as of late August 2026. Commented lines at the end of each section are
+# primary sources — activate them if you want the underlying instrument rather
+# than a firm's summary of it. Entries marked BOT-WALLED return 403 to any
+# scripted fetch; download them by hand and add the local file.
 
 # ---------------------------------------------------------------- 1. AI governance
+# BOT-WALLED, save the page or PDF then `milisten add <path>`:
+# ai-governance | Artificial intelligence policy worldwide: a comparative analysis | https://royalsocietypublishing.org/rsos/article/13/2/242234/480264/Artificial-intelligence-policy-worldwide-a
 ai-governance | Comparative Global AI Regulation: EU, China, US | https://arxiv.org/pdf/2410.21279
 ai-governance | Between Innovation and Oversight: AI Risk Frameworks in EU, US, UK, China | https://arxiv.org/pdf/2503.05773
 ai-governance | From Abstract Threats to Institutional Realities: AI Securitisation | https://arxiv.org/pdf/2601.04107
-# ai-governance | Artificial intelligence policy worldwide: a comparative analysis (R. Soc. Open Sci. 13(2):242234) |
-# ai-governance | SSRN Top Papers on AI in Law, Q1 2026 |
+ai-governance | SSRN Top Papers on AI in Law, Q1 2026 | https://blog.ssrn.com/2026/04/27/top-papers-on-ai-in-law-q1-2026/
 
 # ------------------------------------------------- 2. What supersedes 2025 writing
-# supersedes-2025 | Gibson Dunn on the Digital Omnibus on AI (Reg. (EU) 2026/1744) |
-# supersedes-2025 | EP Legislative Train: Digital Omnibus Regulation |
-# supersedes-2025 | EDPB/EDPS Joint Opinion 2/2026 |
-# supersedes-2025 | Baker Botts US AI Law Update (Jan. 2026) |
-# supersedes-2025 | Cooley: State AI Laws, Where Are They Now |
-# supersedes-2025 | Skadden on Colorado SB 26-189 |
-# supersedes-2025 | TechPolicy.Press: Where State AI Legislation Stands |
-# supersedes-2025 | IAPP US State Privacy Legislation Tracker |
+supersedes-2025 | Gibson Dunn on the EU AI Act Omnibus | https://www.gibsondunn.com/eu-ai-act-omnibus-agreement-postponed-high-risk-deadlines-and-other-key-changes/
+supersedes-2025 | EP Legislative Train: the Digital Omnibus Regulation proposal | https://www.europarl.europa.eu/legislative-train/theme-a-new-plan-for-europe-s-sustainable-prosperity-and-competitiveness/file-digital-package
+supersedes-2025 | EDPB-EDPS Joint Opinion 2/2026 on the Digital Omnibus | https://www.edpb.europa.eu/our-work-tools/our-documents/edpbedps-joint-opinion/edpb-edps-joint-opinion-22026-proposal_en
+supersedes-2025 | Baker Botts US AI Law Update | https://www.bakerbotts.com/thought-leadership/publications/2026/january/us-ai-law-update
+supersedes-2025 | Cooley: State AI Laws, Where Are They Now | https://www.cooley.com/news/insight/2026/2026-04-24-state-ai-laws-where-are-they-now
+supersedes-2025 | Skadden: Colorado Repeals and Replaces Its AI Act | https://www.skadden.com/insights/publications/2026/06/colorado-repeals-and-replaces-its-ai-act
+supersedes-2025 | Where State AI Legislation Stands Half Way Into 2026 | https://www.techpolicy.press/where-state-ai-legislation-stands-half-way-into-2026/
+supersedes-2025 | IAPP US State Privacy Legislation Tracker | https://iapp.org/resources/article/us-state-privacy-legislation-tracker
+# supersedes-2025 | Regulation (EU) 2026/1744 as published | https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng
 
 # ------------------------------------------------------------ 3. AI in legal practice
-# ai-legal-practice | ABA Formal Opinion 512 |
-# ai-legal-practice | Norton Rose Fulbright: Gen AI sanctions update 2026 |
-# ai-legal-practice | NYSBA: Beyond the Mirage |
+# BOT-WALLED, save the page or PDF then `milisten add <path>`:
+# ai-legal-practice | ABA Formal Opinion 512 | https://www.americanbar.org/content/dam/aba/administrative/professional_responsibility/ethics-opinions/aba-formal-opinion-512.pdf
+ai-legal-practice | Norton Rose Fulbright: Update on Gen AI sanctions in 2026 | https://www.nortonrosefulbright.com/en-us/knowledge/publications/792d8bf3/ai-in-litigation-update-on-gen-ai-sanctions-in-2026
+ai-legal-practice | NYSBA: Beyond the Mirage | https://nysba.org/beyond-the-mirage-beware-of-generative-ai-and-hallucinations/
 
 # -------------------------------------------------------------- 4. Transactional M&A
-# ma | Troutman Pepper Locke: M&A Laws and Regulations 2026, USA |
-# ma | ABA 2025 Private Target M&A Deal Points Study |   <- paid; download then use the local path
-# ma | SRS Acquiom 2026 Deal Terms Study |
-# ma | Jones Day on Rutledge v. Clearway Energy |
-# ma | Sidley on Rutledge v. Clearway Energy |
-# ma | Morris James: Cases to Watch in Delaware Courts in 2026 |
+ma | Troutman Pepper Locke: M&A Laws and Regulations 2026, USA | https://www.troutman.com/insights/mergers-acquisitions-laws-and-regulations-2026-usa/
+# BOT-WALLED, save the page or PDF then `milisten add <path>`:
+# ma | Announcing the ABA 2025 Private Target M&A Deal Points Study | https://www.americanbar.org/groups/business_law/resources/business-law-today/2025-december/aba-2025-private-target-mergers-acquisitions-deal-points-study/
+ma | SRS Acquiom 2026 Deal Terms Study | https://www.srsacquiom.com/our-insights/deal-terms-study/
+ma | Jones Day on Rutledge v. Clearway Energy | https://www.jonesday.com/en/insights/2026/03/delaware-supreme-court-upholds-constitutionality-of-dgcl-amendments-adopted-as-sb-21
+ma | Sidley on Rutledge v. Clearway Energy | https://www.sidley.com/en/insights/newsupdates/2026/03/delaware-supreme-court-upholds-section-144-safe-harbor-amendments
+ma | Morris James: Cases to Watch in Delaware Courts in 2026 | https://www.morrisjames.com/p/102nqhh/ma-stockholder-and-corporate-cases-to-watch-in-delaware-courts-in-2026/
+# ma | Rutledge v. Clearway Energy, the opinion itself | https://courts.delaware.gov/Opinions/Download.aspx?id=392120
 
 # ------------------------------------------------------------------- 5. Securities
-# securities | SEC Semiannual Reporting proposing release (91 Fed. Reg. 24968) |
-# securities | Sidley: Takeaways from the SEC Spring 2026 Regulatory Agenda |
-# securities | Cleary: SEC Publishes Its 2026 Rulemaking Agenda |
-# securities | EY: SEC top five priorities in 2026 |
+securities | SEC Semiannual Reporting proposing release | https://www.sec.gov/files/rules/proposed/2026/33-11414.pdf
+securities | Sidley: Takeaways from the SEC Spring 2026 Regulatory Agenda | https://corpgov.law.harvard.edu/2026/08/18/what-to-expect-in-sec-rulemaking-takeaways-from-the-secs-spring-2026-regulatory-agenda/
+securities | Cleary: SEC Publishes Its 2026 Rulemaking Agenda | https://www.clearygottlieb.com/news-and-insights/publication-listing/sec-publishes-its-2026-rulemaking-agenda
+securities | Goodwin: SEC Releases 2026 Regulatory Agenda | https://www.goodwinlaw.com/en/insights/blogs/2026/07/sec-releases-2026-regulatory-agenda
+securities | Securities Law Blog: The SEC's 2026 Regulatory Agenda | https://securities-law-blog.com/2026/08/19/the-secs-2026-regulatory-agenda/
+securities | EY: SEC top five priorities in 2026 | https://www.ey.com/en_us/insights/public-policy/sec-top-priorities
 
 # ------------------------------------------------------------------ 6. Telemedicine
-# telemedicine | HHS telehealth policy updates |
-# telemedicine | PYA on H.R. 7148 telehealth extensions |
-# telemedicine | ABA Health Law on the telehealth extension |
-# telemedicine | Holland & Knight on the fourth DEA/HHS teleprescribing rule |
-# telemedicine | Mintz telehealth update (Jan. 2026) |
-# telemedicine | CCHP 50-state telehealth summary |
+telemedicine | HHS telehealth policy updates | https://telehealth.hhs.gov/providers/telehealth-policy/telehealth-policy-updates
+telemedicine | PYA: Medicare Extends Telehealth Coverage Through 2027 | https://www.pyapc.com/insights/medicare-extends-telehealth-coverage-through-2027-updates-and-reminders-for-providers/
+# BOT-WALLED, save the page or PDF then `milisten add <path>`:
+# telemedicine | ABA Health Law: Congress Extends Medicare Telehealth Flexibilities | https://www.americanbar.org/groups/health_law/news/2026/medicare-telehealth-flexibilities-extended-2027/
+telemedicine | Holland & Knight on the fourth DEA/HHS teleprescribing rule | https://www.hklaw.com/en/insights/publications/2026/01/dea-and-hhs-extend-telemedicine-prescribing-flexibilities-through-2026
+telemedicine | Mintz telehealth update | https://www.mintz.com/insights-center/viewpoints/2146/2026-01-08-telehealth-update-telehealth-flexibilities-convictions
+telemedicine | CCHP State Telehealth Laws and Reimbursement Policies, Fall 2025 | https://www.cchpca.org/resources/state-telehealth-laws-and-reimbursement-policies-report-fall-2025/
+# telemedicine | Fourth Temporary Extension of Telemedicine Flexibilities, the rule itself | https://www.federalregister.gov/documents/2025/12/31/2025-24123/fourth-temporary-extension-of-covid-19-telemedicine-flexibilities-for-prescription-of-controlled
 
 # ----------------------------------------------------------------------- 7. HIPAA
-# hipaa | HHS HIPAA Security Rule NPRM (90 Fed. Reg. 898) |
-# hipaa | HHS OCR Regulatory Initiatives (incl. Purl v. HHS) |
-# hipaa | HIPAA Journal regulatory tracker |
+hipaa | HIPAA Security Rule NPRM | https://www.govinfo.gov/content/pkg/FR-2025-01-06/pdf/2024-30983.pdf
+# BOT-WALLED, save the page then `milisten add <path>`:
+# hipaa | HHS status page for the Security Rule NPRM | https://www.hhs.gov/hipaa/for-professionals/security/hipaa-security-rule-nprm/index.html
+# BOT-WALLED, save the page then `milisten add <path>`:
+# hipaa | HHS OCR Regulatory Initiatives | https://www.hhs.gov/hipaa/for-professionals/regulatory-initiatives/index.html
+hipaa | HIPAA Journal: HIPAA Updates and Changes | https://www.hipaajournal.com/hipaa-updates-hipaa-changes/

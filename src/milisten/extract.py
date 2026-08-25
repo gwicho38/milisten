@@ -5,14 +5,23 @@ from __future__ import annotations
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 import httpx
 
 from .models import Document, Source, SourceKind
 
-UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 milisten/0.1"
+UA = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36"
+)
 MIN_BODY = 400
+BLOCKED = frozenset({401, 403, 407, 451})
+RETRYABLE = frozenset({408, 425, 429, 500, 502, 503, 504})
+BACKOFF = 2.0
+HOST_INTERVAL = 1.5
+_LAST_HIT: dict[str, float] = {}
 
 
 class ExtractionError(RuntimeError):
@@ -44,11 +53,38 @@ def resolve(kind: SourceKind, data: bytes, content_type: str = "") -> SourceKind
     return sniff(data, content_type) if kind is SourceKind.AUTO else kind
 
 
-def fetch(url: str) -> tuple[bytes, str]:
-    with httpx.Client(follow_redirects=True, timeout=90.0, headers={"User-Agent": UA}) as client:
-        response = client.get(url)
-        response.raise_for_status()
-    return response.content, response.headers.get("content-type", "")
+def _wait_turn(host: str) -> None:
+    elapsed = time.monotonic() - _LAST_HIT.get(host, 0.0)
+    if elapsed < HOST_INTERVAL:
+        time.sleep(HOST_INTERVAL - elapsed)
+    _LAST_HIT[host] = time.monotonic()
+
+
+def fetch(url: str, attempts: int = 3) -> tuple[bytes, str]:
+    headers = {
+        "User-Agent": UA,
+        "Accept": "text/html,application/xhtml+xml,application/pdf;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    with httpx.Client(follow_redirects=True, timeout=90.0, headers=headers) as client:
+        for attempt in range(attempts):
+            _wait_turn(httpx.URL(url).host)
+            response = client.get(url)
+            if response.status_code in BLOCKED:
+                raise ExtractionError(
+                    f"{source_host(url)} refused the request ({response.status_code}) — it is behind "
+                    "a bot wall or a login; open it in a browser, save the page or PDF, and add the file"
+                )
+            if response.status_code in RETRYABLE and attempt < attempts - 1:
+                time.sleep(BACKOFF * 2**attempt)
+                continue
+            response.raise_for_status()
+            return response.content, response.headers.get("content-type", "")
+    raise ExtractionError(f"{url} kept failing after {attempts} attempts")
+
+
+def source_host(url: str) -> str:
+    return httpx.URL(url).host or url
 
 
 def html_to_text(markup: str, origin: str) -> str:

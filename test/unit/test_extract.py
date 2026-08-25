@@ -1,4 +1,4 @@
-from milisten.extract import detect_kind, resolve, sniff
+from milisten.extract import BLOCKED, RETRYABLE, detect_kind, resolve, sniff, source_host
 from milisten.models import SourceKind
 
 
@@ -33,3 +33,17 @@ def test_plain_text_is_the_fallback():
 def test_resolve_never_overrides_an_explicit_kind():
     assert resolve(SourceKind.TEXT, b"%PDF-1.7") == SourceKind.TEXT
     assert resolve(SourceKind.AUTO, b"%PDF-1.7") == SourceKind.PDF
+
+
+def test_bot_wall_codes_are_not_retried():
+    assert 403 in BLOCKED and 401 in BLOCKED
+    assert not (BLOCKED & RETRYABLE)
+
+
+def test_transient_codes_are_retryable():
+    for code in (429, 500, 502, 503, 504):
+        assert code in RETRYABLE
+
+
+def test_source_host_extracts_the_hostname():
+    assert source_host("https://www.americanbar.org/a/b.pdf") == "www.americanbar.org"
