@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
+from . import manifest
 from .models import Chapter
 
 
@@ -18,17 +20,14 @@ def _escape(value: str) -> str:
 
 def ffmetadata(chapters: Sequence[Chapter], album: str) -> str:
     lines = [";FFMETADATA1", f"title={_escape(album)}", "artist=milisten", "genre=Speech"]
-    start = 0.0
-    for chapter in chapters:
-        end = start + chapter.seconds
+    for span in manifest.spans(chapters):
         lines += [
             "[CHAPTER]",
             "TIMEBASE=1/1000",
-            f"START={int(start * 1000)}",
-            f"END={int(end * 1000)}",
-            f"title={_escape(chapter.title)}",
+            f"START={int(span.start * 1000)}",
+            f"END={int(span.end * 1000)}",
+            f"title={_escape(span.title)}",
         ]
-        start = end
     return "\n".join(lines) + "\n"
 
 
@@ -68,3 +67,29 @@ def build_m4b(chapters: Sequence[Chapter], out: Path, album: str, bitrate: str =
     listing.unlink(missing_ok=True)
     meta.unlink(missing_ok=True)
     return out
+
+
+def probe_chapters(path: Path) -> tuple[Chapter, ...]:
+    """Recover chapter spans from an existing .m4b, for recordings built before manifests."""
+    if not shutil.which("ffprobe"):
+        return ()
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-print_format", "json", "-show_chapters", str(path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return ()
+    try:
+        found = json.loads(result.stdout).get("chapters", [])
+    except json.JSONDecodeError:
+        return ()
+    return tuple(
+        Chapter(
+            c.get("tags", {}).get("title", f"Chapter {i + 1}"),
+            path,
+            float(c["end_time"]) - float(c["start_time"]),
+        )
+        for i, c in enumerate(found)
+    )

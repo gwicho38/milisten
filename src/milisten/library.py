@@ -1,4 +1,9 @@
-"""Reading-queue persistence. A single JSON file, rewritten atomically."""
+"""Reading-queue persistence. A single JSON file, rewritten atomically.
+
+Paths are resolved per call, not at import: MILISTEN_HOME has to be honoured by
+a process that sets it after this module loads, and a default argument bound to
+a module constant cannot be overridden at all.
+"""
 
 from __future__ import annotations
 
@@ -10,33 +15,52 @@ from pathlib import Path
 from .extract import detect_kind
 from .models import Source, SourceKind
 
-HOME = Path(os.environ.get("MILISTEN_HOME", Path.home() / ".milisten"))
-QUEUE = HOME / "queue.json"
+
+def home() -> Path:
+    return Path(os.environ.get("MILISTEN_HOME", Path.home() / ".milisten")).expanduser()
 
 
-def load(path: Path = QUEUE) -> tuple[Source, ...]:
-    if not path.exists():
+def queue_path() -> Path:
+    return home() / "queue.json"
+
+
+def audio_path() -> Path:
+    return Path(os.environ.get("MILISTEN_AUDIO", home() / "audio")).expanduser()
+
+
+def load(path: Path | None = None) -> tuple[Source, ...]:
+    target = path or queue_path()
+    if not target.exists():
         return ()
-    raw = json.loads(path.read_text())
+    try:
+        raw = json.loads(target.read_text())
+    except json.JSONDecodeError:
+        return ()
     return tuple(
-        Source(ref=r["ref"], title=r["title"], kind=SourceKind(r["kind"]), area=r.get("area", "unfiled"))
-        for r in raw
+        Source(
+            ref=row["ref"],
+            title=row["title"],
+            kind=SourceKind(row["kind"]),
+            area=row.get("area", "unfiled"),
+        )
+        for row in raw
     )
 
 
-def save(sources: Sequence[Source], path: Path = QUEUE) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+def save(sources: Sequence[Source], path: Path | None = None) -> None:
+    target = path or queue_path()
+    target.parent.mkdir(parents=True, exist_ok=True)
     payload = [
         {"ref": s.ref, "title": s.title, "kind": str(s.kind), "area": s.area} for s in sources
     ]
-    tmp = path.with_suffix(".tmp")
+    tmp = target.with_suffix(".tmp")
     tmp.write_text(json.dumps(payload, indent=2) + "\n")
-    tmp.replace(path)
+    tmp.replace(target)
 
 
 def add(sources: Sequence[Source], ref: str, title: str, area: str) -> tuple[Source, ...]:
     if any(s.ref == ref for s in sources):
-        return sources
+        return tuple(sources)
     return (*sources, Source(ref=ref, title=title, kind=detect_kind(ref), area=area))
 
 

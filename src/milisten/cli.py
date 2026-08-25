@@ -7,13 +7,11 @@ from pathlib import Path
 
 import click
 
-from . import library, package, tts
+from . import library, tts
+from .build import render_area
 from .chunk import chunk
 from .extract import ExtractionError, extract
-from .models import Chapter
 from .normalize import normalize
-
-OUT = library.HOME / "audio"
 
 
 def _err(message: str) -> None:
@@ -135,46 +133,45 @@ def build(
             sys.exit(1)
         groups = {area: groups[area]}
 
-    destination = (out or OUT).expanduser()
-    destination.mkdir(parents=True, exist_ok=True)
-    synth = tts.build(engine, voice, speed)
+    destination = (out or library.audio_path()).expanduser()
     skipped: list[str] = []
 
     for group, items in groups.items():
         click.secho(f"\n{group}", bold=True)
-        chapters: list[Chapter] = []
-        wavs = destination / f".{group}"
-        wavs.mkdir(parents=True, exist_ok=True)
-
-        for source in items:
-            click.echo(f"  {source.title[:70]} ", nl=False)
-            try:
-                body = normalize(extract(source, layout).body)
-                pieces = [c.text for c in chunk(body)]
-                wav = wavs / f"{source.slug or 'part'}.wav"
-                seconds = tts.render(synth, pieces, wav)
-            except (ExtractionError, OSError, RuntimeError) as exc:
+        for event in render_area(
+            group, items, destination, engine, voice, speed, layout, keep_wav
+        ):
+            if event.kind == "chapter-start":
+                click.echo(f"  [{event.index}/{event.total}] {event.title[:64]} ", nl=False)
+            elif event.kind == "chapter-done":
+                click.secho(f"{event.seconds / 60:.1f} min", fg="green")
+            elif event.kind == "skipped":
                 click.secho("skipped", fg="yellow")
-                skipped.append(f"{source.title}: {exc}")
-                continue
-            chapters.append(Chapter(source.title, wav, seconds))
-            click.secho(f"{seconds / 60:.1f} min", fg="green")
-
-        if not chapters:
-            _err(f"nothing rendered for {group}")
-            continue
-        book = package.build_m4b(chapters, destination / f"{group}.m4b", group)
-        total = sum(c.seconds for c in chapters) / 60
-        click.secho(f"  -> {book}  ({len(chapters)} chapters, {total:.0f} min)", fg="cyan")
-        if not keep_wav:
-            for chapter in chapters:
-                chapter.audio.unlink(missing_ok=True)
-            wavs.rmdir()
+                skipped.append(f"{event.title}: {event.detail}")
+            elif event.kind == "failed":
+                _err(event.detail)
+            elif event.kind == "done":
+                click.secho(
+                    f"  -> {event.path}  ({event.index} chapters,"
+                    f" {event.seconds / 60:.0f} min)",
+                    fg="cyan",
+                )
 
     if skipped:
         click.secho(f"\n{len(skipped)} source(s) skipped:", fg="yellow")
         for note in skipped:
             click.echo(f"  - {note}")
+
+
+@main.command()
+@click.option("--port", default=0, help="Bind a specific port instead of a free one.")
+@click.option("--no-browser", is_flag=True, help="Do not open a browser window.")
+@click.argument("action", type=click.Choice(["run", "start", "stop", "open"]), default="run")
+def ui(action: str, port: int, no_browser: bool) -> None:
+    """Serve the local web UI for managing sources and recordings."""
+    from .web import launcher
+
+    launcher.dispatch(action, port=port, open_browser=not no_browser)
 
 
 if __name__ == "__main__":

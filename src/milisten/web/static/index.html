@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>milisten</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>%F0%9F%8E%A7</text></svg>" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="appbar">
+      <button class="brand" id="brand" title="milisten — reload the library">milisten</button>
+      <span class="appbar-right">
+        <span class="env-indicator" id="env-indicator">localhost · kokoro</span>
+        <button class="theme-toggle" id="theme-toggle" title="Toggle light / dark theme" aria-label="Toggle theme"></button>
+      </span>
+    </header>
+
+    <div class="shell">
+      <!-- component:area-list -->
+      <nav class="sidebar" id="sidebar" aria-label="Areas">
+        <div class="sidebar-head">
+          <span class="section-title">Areas</span>
+          <span class="counter" id="area-counter"></span>
+        </div>
+        <div class="area-list" id="area-list" role="list"></div>
+
+        <form class="add-form" id="add-form" autocomplete="off">
+          <div class="section-title">Add a source</div>
+          <input class="text-input" id="add-ref" type="text" spellcheck="false"
+                 placeholder="https://… or /path/to/file.pdf" aria-label="URL or file path" required />
+          <input class="text-input" id="add-title" type="text" spellcheck="false"
+                 placeholder="Chapter title (optional)" aria-label="Title" />
+          <input class="text-input" id="add-area" type="text" spellcheck="false"
+                 placeholder="area" aria-label="Area" list="area-options" />
+          <datalist id="area-options"></datalist>
+          <button class="btn btn-primary" id="add-btn" type="submit">Add to queue</button>
+          <div class="field-hint">A bot-walled page? Save the PDF, then add the local path.</div>
+        </form>
+      </nav>
+
+      <!-- component:area-detail -->
+      <main class="panel" id="panel" aria-label="Area detail"></main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="modal-root" hidden></div>
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+  <div class="visually-hidden" id="aria-live" role="status" aria-live="polite"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

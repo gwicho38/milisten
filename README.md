@@ -71,6 +71,57 @@ milisten build --area ai-governance     # one .m4b per area, one chapter per sou
 Output lands in `~/.milisten/audio/<area>.m4b`. AirDrop it, or drop it in Apple
 Books / Plex / any podcast app — chapter marks and resume position work.
 
+## Web UI
+
+```bash
+milisten ui            # foreground, opens a browser
+milisten ui start      # detached; survives the shell exiting
+milisten ui stop
+milisten ui open       # reopen the running instance
+```
+
+Manage the queue, preview normalized text, launch a render and watch it progress,
+then play the result with chapter navigation — all in one page. Binds `127.0.0.1`
+only, mints a per-session token, and makes zero external network requests.
+
+<details>
+<summary>Before — the CLI owned the render loop</summary>
+
+```mermaid
+flowchart LR
+  cli["cli.py build"] --> loop["inline per-source loop"]
+  loop --> extract --> normalize --> chunk --> tts --> package
+  loop -. "progress only as stdout text" .-> term["terminal"]
+```
+
+</details>
+
+<details open>
+<summary>After — one build path, two front ends</summary>
+
+```mermaid
+flowchart LR
+  subgraph core["pure core"]
+    extract --> normalize --> chunk
+  end
+  build["build.render_area()<br/>yields Progress events"]
+  chunk --> build --> tts --> package --> manifest["manifest.json"]
+  cli["cli.py build"] --> build
+  jobs["web/jobs.py<br/>thread + registry"] --> build
+  server["web/server.py<br/>FastAPI + token gate"] --> jobs
+  browser["browser<br/>polls /api/build"] --> server
+  manifest --> server
+```
+
+`render_area` is a generator yielding one `Progress` event per step, so the CLI
+prints and the browser polls without either owning the sequencing.
+
+</details>
+
+Each rendered `.m4b` gets a sibling `<area>.json` recording the same chapter
+spans, because browsers cannot read MP4 chapter marks. Recordings made before
+manifests existed are backfilled from `ffprobe` on first view.
+
 | Flag | Why you'd reach for it |
 |---|---|
 | `--engine say` | Skip the model download; prove the pipeline works with macOS voices |
@@ -99,10 +150,18 @@ is confined to `extract`, `tts` and `cli`.
 | `extract.py` | HTTP, trafilatura, `pdftotext` — the only readers |
 | `normalize.py` | **Pure.** Citation, acronym and number rewriting |
 | `chunk.py` | **Pure.** Sentence-boundary packing to speech-sized pieces |
+| `manifest.py` | **Pure** chapter spans, plus one read and one write |
 | `tts.py` | Kokoro (local) or macOS `say`, behind one `Synthesizer` protocol |
 | `package.py` | **Pure** ffmetadata generation; one `ffmpeg` call to mux |
+| `build.py` | The one render path, as a generator of `Progress` events |
 | `library.py` | Queue persistence in `~/.milisten/queue.json` |
 | `cli.py` | Imperative shell |
+| `web/ranges.py` | **Pure** HTTP Range parsing — seeking a 10-hour file needs it |
+| `web/security.py` | Loopback Host/Origin gate plus per-session token |
+| `web/jobs.py` | One render at a time, on a daemon thread, polled over HTTP |
+| `web/server.py` | FastAPI routes; blocking work stays in sync handlers |
+| `web/launcher.py` | Free port, minted token, browser open, detached daemon |
+| `web/static/` | Vanilla JS, no build step, no external requests |
 
 ## Adding normalization rules
 
