@@ -98,5 +98,5 @@ def render(synth: Synthesizer, texts: Sequence[str], dest: Path) -> float:
     for audio in synth.speak(texts):
         pieces.extend((audio.astype(np.float32), silence))
     track = np.concatenate(pieces) if pieces else silence
-    sf.write(dest, track, synth.sample_rate)
+    sf.write(dest, track, synth.sample_rate, subtype="PCM_16")
     return len(track) / synth.sample_rate
