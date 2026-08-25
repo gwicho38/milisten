@@ -91,12 +91,19 @@ def build(engine: str, voice: str, speed: float) -> Synthesizer:
 
 
 def render(synth: Synthesizer, texts: Sequence[str], dest: Path) -> float:
+    """Stream each chunk to disk. A 10-hour document must not be held in memory."""
     import soundfile as sf
 
     silence = np.zeros(int(synth.sample_rate * 0.35), dtype=np.float32)
-    pieces: list[np.ndarray] = []
-    for audio in synth.speak(texts):
-        pieces.extend((audio.astype(np.float32), silence))
-    track = np.concatenate(pieces) if pieces else silence
-    sf.write(dest, track, synth.sample_rate, subtype="PCM_16")
-    return len(track) / synth.sample_rate
+    frames = 0
+    with sf.SoundFile(
+        dest, "w", samplerate=synth.sample_rate, channels=1, subtype="PCM_16"
+    ) as out:
+        for audio in synth.speak(texts):
+            for part in (audio.astype(np.float32), silence):
+                out.write(part)
+                frames += len(part)
+        if not frames:
+            out.write(silence)
+            frames = len(silence)
+    return frames / synth.sample_rate
