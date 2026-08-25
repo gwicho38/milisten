@@ -1,0 +1,58 @@
+# milisten reading list — format: area | title | ref
+#
+# ref is a URL or a local file path. Lines starting with # are ignored, so the
+# commented entries below are ready to activate once you paste a URL or drop a
+# local PDF next to them. Load with:  milisten import reading-list.txt
+#
+# Only the arXiv entries carry URLs here: their IDs were given, and arXiv PDF
+# URLs are derivable from an ID. Every other ref is left blank on purpose rather
+# than guessed — a wrong URL silently renders the wrong document into audio.
+
+# ---------------------------------------------------------------- 1. AI governance
+ai-governance | Comparative Global AI Regulation: EU, China, US | https://arxiv.org/pdf/2410.21279
+ai-governance | Between Innovation and Oversight: AI Risk Frameworks in EU, US, UK, China | https://arxiv.org/pdf/2503.05773
+ai-governance | From Abstract Threats to Institutional Realities: AI Securitisation | https://arxiv.org/pdf/2601.04107
+# ai-governance | Artificial intelligence policy worldwide: a comparative analysis (R. Soc. Open Sci. 13(2):242234) |
+# ai-governance | SSRN Top Papers on AI in Law, Q1 2026 |
+
+# ------------------------------------------------- 2. What supersedes 2025 writing
+# supersedes-2025 | Gibson Dunn on the Digital Omnibus on AI (Reg. (EU) 2026/1744) |
+# supersedes-2025 | EP Legislative Train: Digital Omnibus Regulation |
+# supersedes-2025 | EDPB/EDPS Joint Opinion 2/2026 |
+# supersedes-2025 | Baker Botts US AI Law Update (Jan. 2026) |
+# supersedes-2025 | Cooley: State AI Laws, Where Are They Now |
+# supersedes-2025 | Skadden on Colorado SB 26-189 |
+# supersedes-2025 | TechPolicy.Press: Where State AI Legislation Stands |
+# supersedes-2025 | IAPP US State Privacy Legislation Tracker |
+
+# ------------------------------------------------------------ 3. AI in legal practice
+# ai-legal-practice | ABA Formal Opinion 512 |
+# ai-legal-practice | Norton Rose Fulbright: Gen AI sanctions update 2026 |
+# ai-legal-practice | NYSBA: Beyond the Mirage |
+
+# -------------------------------------------------------------- 4. Transactional M&A
+# ma | Troutman Pepper Locke: M&A Laws and Regulations 2026, USA |
+# ma | ABA 2025 Private Target M&A Deal Points Study |   <- paid; download then use the local path
+# ma | SRS Acquiom 2026 Deal Terms Study |
+# ma | Jones Day on Rutledge v. Clearway Energy |
+# ma | Sidley on Rutledge v. Clearway Energy |
+# ma | Morris James: Cases to Watch in Delaware Courts in 2026 |
+
+# ------------------------------------------------------------------- 5. Securities
+# securities | SEC Semiannual Reporting proposing release (91 Fed. Reg. 24968) |
+# securities | Sidley: Takeaways from the SEC Spring 2026 Regulatory Agenda |
+# securities | Cleary: SEC Publishes Its 2026 Rulemaking Agenda |
+# securities | EY: SEC top five priorities in 2026 |
+
+# ------------------------------------------------------------------ 6. Telemedicine
+# telemedicine | HHS telehealth policy updates |
+# telemedicine | PYA on H.R. 7148 telehealth extensions |
+# telemedicine | ABA Health Law on the telehealth extension |
+# telemedicine | Holland & Knight on the fourth DEA/HHS teleprescribing rule |
+# telemedicine | Mintz telehealth update (Jan. 2026) |
+# telemedicine | CCHP 50-state telehealth summary |
+
+# ----------------------------------------------------------------------- 7. HIPAA
+# hipaa | HHS HIPAA Security Rule NPRM (90 Fed. Reg. 898) |
+# hipaa | HHS OCR Regulatory Initiatives (incl. Purl v. HHS) |
+# hipaa | HIPAA Journal regulatory tracker |
