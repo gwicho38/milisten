@@ -43,6 +43,7 @@ def render_area(
     speed: float = 1.0,
     layout: bool = False,
     keep_wav: bool = False,
+    level: int = 3,
 ) -> Iterator[Progress]:
     destination.mkdir(parents=True, exist_ok=True)
     scratch = workdir(destination, area)
@@ -60,7 +61,7 @@ def render_area(
     for index, source in enumerate(sources, start=1):
         yield Progress("chapter-start", source.title, index, total)
         try:
-            body = normalize(extract(source, layout).body)
+            body = normalize(extract(source, layout).body, level)
             pieces = [c.text for c in chunk(body)]
             wav = scratch / f"{source.slug or f'part-{index}'}.wav"
             seconds = tts.render(synth, pieces, wav)

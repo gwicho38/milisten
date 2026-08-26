@@ -11,7 +11,7 @@ from . import library, tts
 from .build import render_area
 from .chunk import chunk
 from .extract import ExtractionError, extract
-from .normalize import normalize
+from .normalize import LEVEL_NAMES, normalize
 
 
 def _err(message: str) -> None:
@@ -84,7 +84,13 @@ def remove(ref: str) -> None:
 @click.argument("ref", required=False)
 @click.option("--layout", is_flag=True, help="Preserve PDF column layout during extraction.")
 @click.option("--chars", default=1800, help="How much normalized text to print.")
-def preview(ref: str | None, layout: bool, chars: int) -> None:
+@click.option(
+    "--level",
+    type=click.IntRange(1, 3),
+    default=3,
+    help="1 light, 2 standard, 3 full. Lower suits a good neural voice.",
+)
+def preview(ref: str | None, layout: bool, chars: int, level: int) -> None:
     """Print normalized text without synthesizing. The fastest way to tune rules."""
     sources = library.load()
     targets = [s for s in sources if ref in (s.ref, s.slug)] if ref else list(sources[:1])
@@ -94,13 +100,16 @@ def preview(ref: str | None, layout: bool, chars: int) -> None:
     for source in targets:
         click.secho(f"\n=== {source.title} ===", bold=True)
         try:
-            body = normalize(extract(source, layout).body)
+            body = normalize(extract(source, layout).body, level)
         except (ExtractionError, OSError) as exc:
             _err(str(exc))
             continue
         pieces = chunk(body)
         click.echo(body[:chars])
-        click.secho(f"\n[{len(body):,} chars, {len(pieces)} chunks]", fg="green")
+        click.secho(
+            f"\n[{len(body):,} chars, {len(pieces)} chunks, {LEVEL_NAMES[level]} rewriting]",
+            fg="green",
+        )
 
 
 @main.command()
@@ -111,6 +120,12 @@ def preview(ref: str | None, layout: bool, chars: int) -> None:
 @click.option("--layout", is_flag=True, help="Preserve PDF column layout during extraction.")
 @click.option("--out", type=click.Path(path_type=Path), default=None, help="Output directory.")
 @click.option("--keep-wav", is_flag=True, help="Leave per-chapter WAVs on disk.")
+@click.option(
+    "--level",
+    type=click.IntRange(1, 3),
+    default=3,
+    help="1 light, 2 standard, 3 full. Lower suits a good neural voice.",
+)
 def build(
     area: str | None,
     engine: str,
@@ -119,6 +134,7 @@ def build(
     layout: bool,
     out: Path | None,
     keep_wav: bool,
+    level: int,
 ) -> None:
     """Synthesize one .m4b per area, each source a chapter."""
     sources = library.load()
@@ -139,7 +155,7 @@ def build(
     for group, items in groups.items():
         click.secho(f"\n{group}", bold=True)
         for event in render_area(
-            group, items, destination, engine, voice, speed, layout, keep_wav
+            group, items, destination, engine, voice, speed, layout, keep_wav, level
         ):
             if event.kind == "chapter-start":
                 click.echo(f"  [{event.index}/{event.total}] {event.title[:64]} ", nl=False)

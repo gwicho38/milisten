@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>milisten — legal citation normalizer</title>
-  <meta name="description" content="Rewrite legal and regulatory prose so a speech engine reads it correctly. Runs entirely in your browser." />
+  <title>milisten — listen to legal writing</title>
+  <meta name="description" content="Paste a link, drop a PDF, or type. Legal citations are rewritten so a neural voice reads them correctly." />
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
     script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval';
-    connect-src 'self' https://cdn.jsdelivr.net;
+    connect-src 'self' https://cdn.jsdelivr.net https://huggingface.co https://*.hf.co
+                https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.hf.co https://r.jina.ai;
     worker-src 'self' blob:;
+    media-src 'self' blob:;
     style-src 'self';
     img-src 'self' data:;
     base-uri 'none';
@@ -21,109 +23,97 @@
   <header class="appbar">
     <span class="brand">milisten</span>
     <span class="appbar-right">
-      <span class="env-indicator" id="runtime">loading Python…</span>
+      <span class="env-indicator" id="runtime">starting…</span>
       <button class="theme-toggle" id="theme-toggle" title="Toggle light / dark" aria-label="Toggle theme"></button>
     </span>
   </header>
 
   <main class="wrap">
-    <section class="intro">
-      <h1>Legal prose, read aloud correctly</h1>
-      <p>
-        Every reader app speaks <code>90 Fed. Reg. 898</code> as "ninety fed reg eight
-        ninety eight" and reads URLs character by character. This page runs
-        <strong>the same <code>normalize.py</code></strong> that the
-        <a href="https://github.com/gwicho38/milisten">milisten</a> CLI uses — the real file,
-        executed in your browser through Pyodide, not a re-implementation that can drift.
-      </p>
-      <p class="muted">
-        Nothing leaves your machine. There is no server: your text, your PDF, and the
-        speech all stay in this tab.
-      </p>
-    </section>
+    <h1 class="hero">Listen to legal writing</h1>
+    <p class="hero-sub">
+      Paste a link, drop a PDF, or type. Citations get rewritten so the voice reads
+      them the way a lawyer would say them out loud.
+    </p>
 
-    <section class="card" id="input-card">
-      <div class="card-head">
-        <h2 class="card-title">1 · Give it some text</h2>
-        <span class="card-actions">
-          <button class="link-btn" id="sample-btn" type="button">Load a sample</button>
-          <button class="link-btn" id="clear-btn" type="button">Clear</button>
-        </span>
-      </div>
+    <!-- the one input -->
+    <form class="omni" id="omni-form" autocomplete="off">
+      <input class="omni-input" id="omni" type="text" spellcheck="false"
+             placeholder="Paste a link or text, or drop a PDF…"
+             aria-label="Link, text, or file" />
+      <button class="omni-icon" id="attach-btn" type="button" title="Choose a file" aria-label="Choose a file">📎</button>
+      <button class="omni-play" id="play-btn" type="submit" title="Play">
+        <span id="play-label">▶</span>
+      </button>
+      <input type="file" id="file-input" accept=".pdf,.txt,.md,.markdown" hidden />
+    </form>
 
-      <div class="drop" id="drop">
-        <input type="file" id="file-input" accept=".pdf,.txt,.md,.markdown" hidden />
-        <span>Drop a <strong>PDF</strong>, <code>.txt</code> or <code>.md</code> here, or
-          <button class="link-btn" id="browse-btn" type="button">choose a file</button>
-        </span>
-        <span class="muted" id="file-note"></span>
-      </div>
+    <div class="controls">
+      <label class="ctl">Voice
+        <select id="voice-select"></select>
+      </label>
+      <label class="ctl">Speed
+        <input id="rate-input" type="range" min="0.7" max="1.6" step="0.05" value="1" />
+        <output id="rate-out">1.0×</output>
+      </label>
+      <label class="ctl">Rewriting
+        <input id="level-input" type="range" min="1" max="3" step="1" value="2" />
+        <output id="level-out">standard</output>
+      </label>
+      <span class="ctl-hint" id="level-hint"></span>
+    </div>
 
-      <textarea class="text-area" id="raw" spellcheck="false"
-        placeholder="…or paste text. Citations, docket numbers, statutes, agency acronyms — whatever you actually read."></textarea>
+    <div class="status" id="status" hidden></div>
 
-      <div class="row">
-        <button class="btn btn-primary" id="normalize-btn" disabled>Normalize</button>
-        <span class="muted" id="raw-stats"></span>
-      </div>
-    </section>
-
-    <section class="card" id="output-card" hidden>
-      <div class="card-head">
-        <h2 class="card-title">2 · What the voice will actually receive</h2>
-        <span class="card-actions">
-          <button class="link-btn" id="tab-normalized" type="button" aria-pressed="true">Normalized</button>
-          <button class="link-btn" id="tab-diff" type="button" aria-pressed="false">Changes only</button>
-          <button class="link-btn" id="copy-btn" type="button">Copy</button>
-        </span>
-      </div>
-      <div class="stats" id="out-stats"></div>
-      <pre class="out" id="out"></pre>
-    </section>
-
-    <section class="card" id="speak-card" hidden>
-      <div class="card-head">
-        <h2 class="card-title">3 · Listen</h2>
-        <span class="card-actions"><span class="muted" id="speak-note"></span></span>
-      </div>
-      <div class="row">
-        <button class="btn btn-primary" id="play-btn">Play</button>
-        <button class="btn" id="pause-btn" disabled>Pause</button>
-        <button class="btn" id="stop-btn" disabled>Stop</button>
-        <label class="field">Voice
-          <select id="voice-select"></select>
-        </label>
-        <label class="field">Rate
-          <input id="rate-input" type="range" min="0.6" max="1.8" step="0.05" value="1" />
-        </label>
+    <section class="player" id="player" hidden>
+      <div class="player-row">
+        <button class="btn" id="stop-btn">Stop</button>
+        <button class="btn" id="download-btn" hidden>Download WAV</button>
+        <span class="player-meta" id="player-meta"></span>
       </div>
       <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
       <div class="chunk-list" id="chunks"></div>
     </section>
 
-    <section class="card">
-      <h2 class="card-title">What this page cannot do</h2>
-      <ul class="limits">
-        <li><strong>Fetch a URL.</strong> Browsers block cross-origin reads, so there is no
-          way to pull an article without a server. Download it and drop the file in.</li>
-        <li><strong>Produce a chaptered <code>.m4b</code>.</strong> That needs ffmpeg. The
-          CLI does it; a browser tab cannot.</li>
-        <li><strong>Use the good voice.</strong> This plays through your operating system's
-          built-in voices. The CLI renders with Kokoro, which sounds markedly better.</li>
-      </ul>
-      <p class="muted">
-        For a queue, real voices and chaptered audiobooks:
-        <code>uv tool install milisten</code> — see the
-        <a href="https://github.com/gwicho38/milisten">repo</a>.
-      </p>
-    </section>
+    <details class="details" id="text-details" hidden>
+      <summary>What the voice receives <span class="muted" id="out-stats"></span></summary>
+      <div class="tabs">
+        <button class="link-btn" id="tab-normalized" type="button" aria-pressed="true">Normalized</button>
+        <button class="link-btn" id="tab-diff" type="button" aria-pressed="false">Changes only</button>
+        <button class="link-btn" id="copy-btn" type="button">Copy</button>
+      </div>
+      <pre class="out" id="out"></pre>
+    </details>
+
+    <details class="details">
+      <summary>How this works, and what it can't do</summary>
+      <div class="prose">
+        <p>
+          The rewriting is not a re-implementation. This page runs the real
+          <code>normalize.py</code> from the
+          <a href="https://github.com/gwicho38/milisten">milisten</a> CLI through Pyodide,
+          so the two cannot drift apart. The voice is Kokoro-82M, the same model the CLI
+          uses, running in this tab via ONNX — about 86 MB on first play, cached after.
+        </p>
+        <p><strong>Text you type and files you drop never leave your browser.</strong>
+          Links are the exception: a browser cannot read another site directly, so a
+          pasted URL is sent to <code>r.jina.ai</code> to extract the text. If you would
+          rather nothing left the tab, download the page and drop the file instead.</p>
+        <ul>
+          <li><strong>No chaptered <code>.m4b</code>.</strong> That needs ffmpeg. The CLI
+            builds real audiobooks with chapter marks; a browser tab cannot.</li>
+          <li><strong>No queue.</strong> One document at a time. The CLI keeps a reading
+            list across dozens of sources.</li>
+          <li><strong>Bot walls still apply.</strong> Some publishers refuse automated
+            readers outright; download those by hand.</li>
+        </ul>
+        <p class="muted">For a real library: <code>uv tool install milisten</code></p>
+      </div>
+    </details>
   </main>
 
+  <div class="drop-veil" id="drop-veil" hidden><span>Drop to read it</span></div>
   <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
 
-  <!-- Pinned versions with Subresource Integrity. Pyodide fetches its own wasm and
-       stdlib from the same pinned path afterwards; SRI cannot cover those, which is
-       why script-src is restricted to this one origin. -->
   <script
     src="https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.js"
     integrity="sha384-4X7gSPzQ4pHfjTE5aBEPJAQcHu55sciq+NWO3OUOZ3zHSJhn4te9CBjUyRSr+nei"
