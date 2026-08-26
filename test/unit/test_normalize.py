@@ -1,6 +1,9 @@
 import pytest
 
 from milisten.normalize import (
+    FULL,
+    LIGHT,
+    STANDARD,
     collapse_space,
     drop_page_artifacts,
     expand_citations,
@@ -193,3 +196,71 @@ def test_ascii_hyphens_are_left_alone_because_they_are_usually_identifiers():
     "Senate Bill 26 to 189" is a far worse error than an unexpanded range."""
     for identifier in ("SB 26-189", "33-11414", "2020-2025"):
         assert expand_numbers(identifier) == identifier
+
+
+# --- normalization levels --------------------------------------------------
+
+SPECIMEN = "SEC and the EDPB agree; see 91 Fed. Reg. 24968, 91pp., e.g. Art. 50(2)."
+
+
+def test_light_leaves_acronyms_and_abbreviations_alone():
+    out = normalize(SPECIMEN, LIGHT)
+    assert "SEC" in out and "EDPB" in out
+    assert "e.g." in out and "91pp." in out
+
+
+def test_light_still_fixes_what_every_engine_misreads():
+    out = normalize(SPECIMEN, LIGHT)
+    assert "volume 91 of the Federal Register at page 24968" in out
+    assert "Article 50, paragraph 2" in out
+
+
+def test_standard_expands_abbreviations_but_keeps_acronyms_whole():
+    out = normalize(SPECIMEN, STANDARD)
+    assert "91 pages" in out and "for example" in out
+    assert "SEC" in out and "S E C" not in out
+
+
+def test_full_spells_acronyms():
+    assert "S E C" in normalize(SPECIMEN, FULL)
+
+
+def test_levels_are_monotonic_in_how_much_they_rewrite():
+    light, standard, full = (normalize(SPECIMEN, lvl) for lvl in (LIGHT, STANDARD, FULL))
+    assert light != standard != full
+
+
+def test_every_level_strips_urls_and_stays_idempotent():
+    raw = "See https://sec.gov/x. Per the rule, 26%->18%."
+    for level in (LIGHT, STANDARD, FULL):
+        once = normalize(raw, level)
+        assert "http" not in once
+        assert normalize(once, level) == once
+
+
+def test_default_level_is_full_so_existing_callers_are_unchanged():
+    assert normalize(SPECIMEN) == normalize(SPECIMEN, FULL)
+
+
+def test_unknown_high_level_behaves_as_full():
+    assert normalize(SPECIMEN, 99) == normalize(SPECIMEN, FULL)
+
+
+# --- URL removal must not eat the sentence's own punctuation ---------------
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("See https://sec.gov/x. Per the rule.", "See. Per the rule."),
+        ("see (https://a.co/b) and more.", "see and more."),
+        ('quoted "https://a.co/b". Next.', "quoted. Next."),
+        ("comma https://a.co/b, then more.", "comma, then more."),
+    ],
+)
+def test_url_removal_preserves_following_punctuation(raw, expected):
+    assert normalize(raw, LIGHT) == expected
+
+
+def test_a_stripped_url_no_longer_merges_two_sentences():
+    out = normalize("See https://sec.gov/x. Per the rule.", LIGHT)
+    assert out.count(".") == 2

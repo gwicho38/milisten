@@ -12,6 +12,14 @@ from functools import reduce
 
 Rule = tuple[re.Pattern[str], str | Callable[[re.Match[str]], str]]
 
+# How much help the voice needs. A good neural voice reads "SEC" and "et al."
+# correctly, so expanding them only makes it stilted; a robotic voice needs all
+# of it. Same rules throughout — the level chooses which groups run.
+LIGHT = 1
+STANDARD = 2
+FULL = 3
+LEVEL_NAMES = {LIGHT: "light", STANDARD: "standard", FULL: "full"}
+
 
 def _spell(token: str) -> str:
     return " ".join(token)
@@ -95,7 +103,8 @@ def _rule(pattern: str, repl: str | Callable[[re.Match[str]], str]) -> Rule:
     return re.compile(pattern), repl
 
 
-CITATION_RULES: tuple[Rule, ...] = (
+# Level 1 and up: things every engine, neural or not, reads wrongly.
+CORE_RULES: tuple[Rule, ...] = (
     # Composite citations first — they contain abbreviations handled later.
     _rule(r"arXiv:\s*(\d{4})\.(\d{4,5})", r"arXiv preprint \1 point \2"),
     _rule(
@@ -147,6 +156,11 @@ CITATION_RULES: tuple[Rule, ...] = (
     *(_rule(p, r) for p, r in COURTS.items()),
     _rule(r"(?<=[a-z’'\)])\s+v\.\s+(?=[A-Z])", " versus "),
     _rule(r"\bQ([1-4])\s+(\d{4})", lambda m: f"{QUARTERS[m[1]]} quarter of {m[2]}"),
+)
+
+# Level 2 and up. A neural voice reads most of these acceptably on its own, so
+# expanding them buys clarity at the cost of sounding stilted.
+ABBREVIATION_RULES: tuple[Rule, ...] = (
     # An abbreviation period followed by a capital was also ending a sentence.
     # Expanding it away merges two sentences, which costs the chunker a boundary
     # and the voice a pause. "Aug. Term" is the rarer reading; we accept it.
@@ -194,8 +208,10 @@ def strip_links(text: str) -> str:
     out = re.sub(r"\[([^\]]+)\]\((?:https?|mailto)[^)]*\)", r"\1", text)
     out = re.sub(r"\[PDF\]\s*", "", out)
     out = re.sub(r"<https?://[^>]+>", "", out)
-    out = re.sub(r"https?://\S+", "", out)
-    out = re.sub(r"\bwww\.\S+", "", out)
+    # Stop before trailing punctuation: \S+ would eat the sentence's own full stop
+    # and run it into the next one.
+    out = re.sub(r"https?://\S+?(?=[.,;:!?'\")\]]*(?:\s|$))", "", out)
+    out = re.sub(r"\bwww\.\S+?(?=[.,;:!?'\")\]]*(?:\s|$))", "", out)
     return re.sub(r"\S+@\S+\.\w+", "", out)
 
 
@@ -235,8 +251,9 @@ def _apply(rules: Sequence[Rule], text: str) -> str:
     return reduce(lambda acc, rule: rule[0].sub(rule[1], acc), rules, text)
 
 
-def expand_citations(text: str) -> str:
-    return _apply(CITATION_RULES, text)
+def expand_citations(text: str, level: int = 3) -> str:
+    rules = CORE_RULES + (ABBREVIATION_RULES if level >= STANDARD else ())
+    return _apply(rules, text)
 
 
 def expand_numbers(text: str) -> str:
@@ -266,24 +283,51 @@ def spell_acronyms(text: str) -> str:
 
 def collapse_space(text: str) -> str:
     out = re.sub(r"[ \t]+", " ", text)
+    # Removing a URL or a bracketed cite leaves empty delimiters and orphaned space
+    # in front of the punctuation that followed it.
+    out = re.sub(r"\(\s*\)|\[\s*\]|\"\s*\"|'\s*'", "", out)
+    out = re.sub(r"[ \t]+([.,;:!?])", r"\1", out)
+    out = re.sub(r"([(\[])\s+", r"\1", out)
+    out = re.sub(r"[ \t]+", " ", out)
     out = re.sub(r" ?\n ?", "\n", out)
     out = re.sub(r"\n{3,}", "\n\n", out)
-    out = re.sub(r"\(\s*\)", "", out)
     return out.strip()
 
 
-PIPELINE: tuple[Callable[[str], str], ...] = (
+STRUCTURAL: tuple[Callable[[str], str], ...] = (
     strip_links,
     dehyphenate,
     drop_page_artifacts,
     unwrap,
-    expand_phrases,
-    expand_citations,
-    expand_numbers,
-    spell_acronyms,
-    collapse_space,
 )
 
 
-def normalize(text: str, pipeline: Sequence[Callable[[str], str]] = PIPELINE) -> str:
-    return reduce(lambda acc, step: step(acc), pipeline, text)
+def pipeline_for(level: int) -> tuple[Callable[[str], str], ...]:
+    """Rule groups by how much help the voice needs.
+
+    A neural voice says "SEC" and "et al." correctly, so spelling them out only
+    makes it stilted. A weak voice needs every one of them expanded. The level
+    picks which groups run; the rules themselves never change.
+    """
+    steps: list[Callable[[str], str]] = list(STRUCTURAL)
+    if level >= STANDARD:
+        steps.append(expand_phrases)
+    steps.append(lambda text: expand_citations(text, level))
+    steps.append(expand_numbers)
+    if level >= FULL:
+        steps.append(spell_acronyms)
+    steps.append(collapse_space)
+    return tuple(steps)
+
+
+def normalize(
+    text: str,
+    level: int = FULL,
+    pipeline: Sequence[Callable[[str], str]] | None = None,
+) -> str:
+    steps = pipeline if pipeline is not None else pipeline_for(level)
+    return reduce(lambda acc, step: step(acc), steps, text)
+
+
+# Kept so callers that passed the old module-level pipeline keep working.
+PIPELINE: tuple[Callable[[str], str], ...] = pipeline_for(FULL)
