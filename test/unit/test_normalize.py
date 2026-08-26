@@ -11,6 +11,7 @@ from milisten.normalize import (
     normalize,
     spell_acronyms,
     strip_links,
+    strip_markup,
     unwrap,
 )
 
@@ -272,3 +273,65 @@ def test_markdown_images_are_dropped_not_read_as_alt_text():
 
 def test_markdown_links_still_keep_their_label():
     assert strip_links("see [the rule](https://x.co/r) now") == "see the rule now"
+
+
+# --- markup a voice should never pronounce ---------------------------------
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("*   Silicon Formalism", "Silicon Formalism"),
+        ("- a bullet item", "a bullet item"),
+        ("• a bullet item", "a bullet item"),
+        ("## A Heading", "A Heading"),
+        ("> a quoted line", "a quoted line"),
+        ("**bold words** here", "bold words here"),
+        ("*emphasis* here", "emphasis here"),
+        ("__underlined__ here", "underlined here"),
+        ("~~struck~~ here", "struck here"),
+        ("`code` here", "code here"),
+    ],
+)
+def test_decoration_is_removed(raw, expected):
+    assert strip_markup(raw).strip() == expected
+
+
+def test_a_spaced_dash_becomes_a_pause_not_the_word_dash():
+    assert strip_markup("Chicago – Law School") == "Chicago, Law School"
+
+
+def test_an_unspaced_dash_is_left_for_the_range_rule():
+    assert strip_markup("2020–2025") == "2020–2025"
+    assert normalize("covering 2020–2025.", LIGHT) == "covering 2020 to 2025."
+
+
+def test_a_spaced_dash_between_numbers_is_left_alone_too():
+    assert strip_markup("pages 12 – 14") == "pages 12 – 14"
+
+
+def test_removing_a_link_does_not_glue_words_together():
+    glued = "[Judge AI](https://x.co/a)by Eric Posner"
+    assert normalize(glued, LIGHT) == "Judge AI by Eric Posner"
+
+
+def test_a_missing_space_before_an_affiliation_is_repaired():
+    assert strip_markup("Tosato(Southern Methodist)") == "Tosato (Southern Methodist)"
+
+
+def test_a_missing_space_after_a_comma_is_repaired():
+    assert strip_markup("Power Steering,Not a Brake") == "Power Steering, Not a Brake"
+
+
+def test_compound_hyphens_and_real_punctuation_survive():
+    kept = "The high-risk rule applies; see the notice, dated today."
+    assert strip_markup(kept) == kept
+
+
+def test_table_cells_become_pauses():
+    assert strip_markup("| Alpha | Beta |").strip() == "Alpha, Beta"
+
+
+def test_markup_stripping_is_idempotent():
+    raw = "*   **Bold** item – with a dash\n## Heading"
+    once = strip_markup(raw)
+    assert strip_markup(once) == once

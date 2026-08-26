@@ -99,8 +99,44 @@ LATIN: dict[str, str] = {
 }
 
 
-def _rule(pattern: str, repl: str | Callable[[re.Match[str]], str]) -> Rule:
-    return re.compile(pattern), repl
+def _apply(rules: Sequence[Rule], text: str) -> str:
+    return reduce(lambda acc, rule: rule[0].sub(rule[1], acc), rules, text)
+
+
+def _rule(
+    pattern: str, repl: str | Callable[[re.Match[str]], str], flags: int = 0
+) -> Rule:
+    return re.compile(pattern, flags), repl
+
+
+# Decoration a voice should never pronounce. Runs at every level and before link
+# removal, because a link's own punctuation is what glues words together when the
+# markup around it goes away.
+DECORATION_RULES: tuple[Rule, ...] = (
+    _rule(r"^[ \t]{0,3}#{1,6}[ \t]+", "", re.MULTILINE),
+    _rule(r"^[ \t]{0,3}>[ \t]?", "", re.MULTILINE),
+    _rule(r"^[ \t]*[*+•·][ \t]+", "", re.MULTILINE),
+    _rule(r"^[ \t]*-[ \t]+(?=\S)", "", re.MULTILINE),
+    _rule(r"\*{1,3}([^*\n]+)\*{1,3}", r"\1"),
+    _rule(r"_{2,3}([^_\n]+)_{2,3}", r"\1"),
+    _rule(r"~~([^~\n]+)~~", r"\1"),
+    _rule(r"`{1,3}([^`\n]+)`{1,3}", r"\1"),
+    _rule(r"^[ \t]*\|[ \t]*|[ \t]*\|[ \t]*$", "", re.MULTILINE),
+    _rule(r"[ \t]*\|[ \t]*", ", "),
+    # "[Title](url)by Author" collapses to "Titleby Author" once the link goes, and
+    # "Name(Affiliation" is the mirror case.
+    _rule(r"\)(?=[A-Za-z])", ") "),
+    _rule(r"(?<=[a-z])\((?=[A-Z])", " ("),
+    _rule(r",(?=[A-Za-z])", ", "),
+    # A spaced dash is prose punctuation, not a range: read it as a pause. Unspaced
+    # dashes stay for the number rules, which turn 2020-2025 into "2020 to 2025".
+    _rule(r"(?<!\d)[ \t]+[–—][ \t]+(?!\d)", ", "),
+    _rule(r"[*_~`]{2,}", ""),
+)
+
+
+def strip_markup(text: str) -> str:
+    return _apply(DECORATION_RULES, text)
 
 
 # Level 1 and up: things every engine, neural or not, reads wrongly.
@@ -248,10 +284,6 @@ def expand_phrases(text: str) -> str:
     return re.sub(pattern, sub, text)
 
 
-def _apply(rules: Sequence[Rule], text: str) -> str:
-    return reduce(lambda acc, rule: rule[0].sub(rule[1], acc), rules, text)
-
-
 def expand_citations(text: str, level: int = 3) -> str:
     rules = CORE_RULES + (ABBREVIATION_RULES if level >= STANDARD else ())
     return _apply(rules, text)
@@ -296,6 +328,7 @@ def collapse_space(text: str) -> str:
 
 
 STRUCTURAL: tuple[Callable[[str], str], ...] = (
+    strip_markup,
     strip_links,
     dehyphenate,
     drop_page_artifacts,
