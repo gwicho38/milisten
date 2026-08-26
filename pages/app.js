@@ -146,7 +146,21 @@ async function fromUrl(url) {
   }
   const text = (await relayed.text()).trim();
   if (text.length < 400) throw new Error("that link yielded almost no text — try downloading it");
-  return text;
+  return stripRelayHeader(text);
+}
+
+/** The extractor prefixes a metadata block. Left in, the voice reads out
+ *  "URL Source colon…" and an ISO timestamp before reaching the article. */
+function stripRelayHeader(text) {
+  const marker = text.indexOf("Markdown Content:");
+  if (marker === -1) return text;
+  const title = /^Title:\s*(.+)$/m.exec(text.slice(0, marker));
+  const body = text
+    .slice(marker + "Markdown Content:".length)
+    // The extractor leaves degraded image placeholders behind, e.g. "!Image 3".
+    .replace(/^!?\[?Image \d+\]?.*$/gm, "")
+    .trim();
+  return title ? `${title[1].trim()}\n\n${body}` : body;
 }
 
 async function pdfToText(file) {
@@ -478,10 +492,27 @@ window.addEventListener("drop", async (e) => {
   e.preventDefault();
   dragDepth = 0;
   $("drop-veil").hidden = true;
-  const file = e.dataTransfer?.files?.[0];
-  if (!file) return;
+
+  const dt = e.dataTransfer;
+  const file = dt?.files?.[0];
+  // A link or selection dragged from another tab arrives as text, not a file. Reading
+  // only dt.files silently ignored it while the overlay promised otherwise.
+  const dropped = (dt?.getData("text/uri-list") || dt?.getData("text/plain") || "").trim();
+  const firstUrl = dropped.split(/\s+/).find(looksLikeUrl);
+
   try {
-    S.raw = await ingestFile(file);
+    if (file) {
+      S.raw = await ingestFile(file);
+    } else if (firstUrl) {
+      $("omni").value = firstUrl;
+      S.raw = await fromUrl(firstUrl);
+    } else if (dropped.length >= 40) {
+      $("omni").value = `dropped text · ${dropped.length.toLocaleString()} chars`;
+      S.raw = dropped;
+    } else {
+      toast("drop a file, a link, or a decent chunk of text", "info");
+      return;
+    }
     $("omni").dataset.settled = S.raw.slice(0, 64);
     normalizeNow();
     status("ready — press play");

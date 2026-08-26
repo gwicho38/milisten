@@ -264,3 +264,11 @@ def test_url_removal_preserves_following_punctuation(raw, expected):
 def test_a_stripped_url_no_longer_merges_two_sentences():
     out = normalize("See https://sec.gov/x. Per the rule.", LIGHT)
     assert out.count(".") == 2
+
+
+def test_markdown_images_are_dropped_not_read_as_alt_text():
+    assert strip_links("before ![a chart of rates](https://x.co/i.png) after") == "before  after"
+
+
+def test_markdown_links_still_keep_their_label():
+    assert strip_links("see [the rule](https://x.co/r) now") == "see the rule now"

@@ -205,7 +205,8 @@ NUMBER_RULES: tuple[Rule, ...] = (
 
 
 def strip_links(text: str) -> str:
-    out = re.sub(r"\[([^\]]+)\]\((?:https?|mailto)[^)]*\)", r"\1", text)
+    out = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", text)
+    out = re.sub(r"\[([^\]]+)\]\((?:https?|mailto)[^)]*\)", r"\1", out)
     out = re.sub(r"\[PDF\]\s*", "", out)
     out = re.sub(r"<https?://[^>]+>", "", out)
     # Stop before trailing punctuation: \S+ would eat the sentence's own full stop
