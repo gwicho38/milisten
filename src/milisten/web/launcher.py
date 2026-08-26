@@ -49,6 +49,29 @@ def mint_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def token_file() -> Path:
+    return home() / "token"
+
+
+def stable_token() -> str:
+    """A token that survives restarts, so a long-lived agent has one bookmarkable URL.
+
+    Per-launch tokens are better when the server's lifetime is one session; an agent
+    that restarts at login would invalidate the bookmark every time.
+    """
+    existing = token_file()
+    if existing.exists():
+        token = existing.read_text().strip()
+        if token:
+            existing.chmod(0o600)
+            return token
+    token = mint_token()
+    secure_home()
+    with os.fdopen(open_private(existing), "w") as handle:
+        handle.write(token + "\n")
+    return token
+
+
 def build_launch_url(port: int, token: str) -> str:
     return f"http://{HOST}:{port}/?token={token}"
 
@@ -132,8 +155,9 @@ def serve(port: int, token: str, open_browser: bool, announce: bool = True) -> N
     uvicorn.run(server.app, host=HOST, port=port, log_level="warning")
 
 
-def _run(port: int, open_browser: bool) -> int:
-    serve(port or pick_free_port(), mint_token(), open_browser)
+def _run(port: int, open_browser: bool, stable: bool = False) -> int:
+    token = stable_token() if stable else mint_token()
+    serve(port or pick_free_port(), token, open_browser)
     return 0
 
 
@@ -207,9 +231,11 @@ def _open() -> int:
     return 0
 
 
-def dispatch(action: str, port: int = 0, open_browser: bool = True) -> None:
+def dispatch(
+    action: str, port: int = 0, open_browser: bool = True, stable: bool = False
+) -> None:
     code = {
-        "run": lambda: _run(port, open_browser),
+        "run": lambda: _run(port, open_browser, stable),
         "start": lambda: _start(port, open_browser),
         "stop": _stop,
         "open": _open,

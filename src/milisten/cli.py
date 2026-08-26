@@ -166,12 +166,57 @@ def build(
 @main.command()
 @click.option("--port", default=0, help="Bind a specific port instead of a free one.")
 @click.option("--no-browser", is_flag=True, help="Do not open a browser window.")
+@click.option(
+    "--stable-token",
+    is_flag=True,
+    help="Reuse the token in ~/.milisten/token so the URL stays bookmarkable.",
+)
 @click.argument("action", type=click.Choice(["run", "start", "stop", "open"]), default="run")
-def ui(action: str, port: int, no_browser: bool) -> None:
+def ui(action: str, port: int, no_browser: bool, stable_token: bool) -> None:
     """Serve the local web UI for managing sources and recordings."""
     from .web import launcher
 
-    launcher.dispatch(action, port=port, open_browser=not no_browser)
+    launcher.dispatch(
+        action, port=port, open_browser=not no_browser, stable=stable_token
+    )
+
+
+@main.group()
+def agent() -> None:
+    """Keep the web UI running at one bookmarkable URL, started at login."""
+
+
+@agent.command("install")
+@click.option("--port", default=None, type=int, help="Port to bind; defaults to 8765.")
+def agent_install(port: int | None) -> None:
+    """Install and load the launchd agent."""
+    from .web import agent as agent_mod
+
+    code, message = agent_mod.install(port or agent_mod.DEFAULT_PORT)
+    if code:
+        _err(message)
+        sys.exit(code)
+    click.secho(f"agent running  →  {message}", fg="green")
+    click.echo("Bookmark that URL; it survives restarts and logins.")
+
+
+@agent.command("uninstall")
+def agent_uninstall() -> None:
+    """Unload and remove the launchd agent."""
+    from .web import agent as agent_mod
+
+    click.echo(agent_mod.uninstall()[1])
+
+
+@agent.command("status")
+@click.option("--port", default=None, type=int, help="Port the agent binds.")
+def agent_status(port: int | None) -> None:
+    """Report whether the agent is installed and loaded."""
+    from .web import agent as agent_mod
+
+    code, message = agent_mod.status(port or agent_mod.DEFAULT_PORT)
+    click.secho(message, fg="green" if code == 0 else "yellow")
+    sys.exit(code)
 
 
 if __name__ == "__main__":
