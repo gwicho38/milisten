@@ -148,3 +148,48 @@ def test_dotted_category_codes_are_not_letter_split():
 
 def test_bracketed_acronym_is_still_spelled():
     assert spell_acronyms("(EU) rules") == "(E U) rules"
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("91pp. Comments closed.", "91 pages. Comments closed."),
+        ("filed in Aug. The court ruled.", "filed in August. The court ruled."),
+        ("36pp., is long.", "36 pages, is long."),
+        ("due Feb. 2026 under the rule.", "due February 2026 under the rule."),
+        ("see pp. 12-14. Then compare.", "see pages 12 to 14. Then compare."),
+    ],
+)
+def test_abbreviation_periods_that_also_end_a_sentence_are_kept(raw, expected):
+    assert expand_citations(raw) == expected
+
+
+def test_a_swallowed_boundary_would_cost_the_chunker_a_split():
+    from milisten.chunk import chunk
+
+    assert len(chunk(normalize("The rule is 91pp. Comments closed today."))) >= 1
+    assert ". " in normalize("The rule is 91pp. Comments closed today.")
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("26%->18%", "26 percent to 18 percent"),
+        ("26%→18%", "26 percent to 18 percent"),
+        ("55%-->63%", "55 percent to 63 percent"),
+        ("69%>82%", "69 percent to 82 percent"),
+    ],
+)
+def test_arrow_forms_all_read_as_to(raw, expected):
+    assert expand_numbers(raw) == expected
+
+
+def test_typographic_dash_ranges_become_to():
+    assert expand_numbers("2020–2025") == "2020 to 2025"
+
+
+def test_ascii_hyphens_are_left_alone_because_they_are_usually_identifiers():
+    """A plain hyphen is as often a bill or docket number as a range, and
+    "Senate Bill 26 to 189" is a far worse error than an unexpanded range."""
+    for identifier in ("SB 26-189", "33-11414", "2020-2025"):
+        assert expand_numbers(identifier) == identifier

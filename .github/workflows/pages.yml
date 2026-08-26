@@ -1,0 +1,71 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "pages/**"
+      - "src/milisten/normalize.py"
+      - "src/milisten/chunk.py"
+      - "src/milisten/models.py"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The page runs the real normalizer, not a JavaScript port of it. Copying the
+      # modules at build time keeps one implementation in git and one test suite.
+      - name: Stage the pure core for Pyodide
+        run: |
+          set -euo pipefail
+          mkdir -p pages/milisten
+          for f in models.py normalize.py chunk.py; do
+            cp "src/milisten/$f" "pages/milisten/$f"
+          done
+          printf '' > pages/milisten/__init__.py
+          test -s pages/milisten/normalize.py
+          test -s pages/milisten/chunk.py
+          echo "staged:"; wc -l pages/milisten/*.py
+
+      # A third-party import in the pure core would break in Pyodide, which has no
+      # network install step. Fail here rather than at runtime in someone's browser.
+      - name: Assert the pure core is stdlib-only
+        run: |
+          set -euo pipefail
+          if grep -rhE '^(import|from) ' pages/milisten/*.py \
+             | grep -vE '^(import|from) (re|json|sys|os)\b' \
+             | grep -vE '^from (__future__|collections\.abc|functools|dataclasses|enum|pathlib|typing)\b' \
+             | grep -vE '^from \.'; then
+            echo "::error::pure core gained a non-stdlib import; Pyodide cannot install it"
+            exit 1
+          fi
+          echo "stdlib-only: ok"
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

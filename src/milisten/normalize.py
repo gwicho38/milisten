@@ -147,11 +147,19 @@ CITATION_RULES: tuple[Rule, ...] = (
     *(_rule(p, r) for p, r in COURTS.items()),
     _rule(r"(?<=[a-z’'\)])\s+v\.\s+(?=[A-Z])", " versus "),
     _rule(r"\bQ([1-4])\s+(\d{4})", lambda m: f"{QUARTERS[m[1]]} quarter of {m[2]}"),
+    # An abbreviation period followed by a capital was also ending a sentence.
+    # Expanding it away merges two sentences, which costs the chunker a boundary
+    # and the voice a pause. "Aug. Term" is the rarer reading; we accept it.
+    _rule(
+        r"\b(" + "|".join(MONTHS) + r")\.(?=\s+[A-Z])",
+        lambda m: MONTHS[m[1]] + ".",
+    ),
     _rule(
         r"\b(" + "|".join(MONTHS) + r")\.",
         lambda m: MONTHS[m[1]],
     ),
     *(_rule(p, r) for p, r in LATIN.items()),
+    _rule(r"\b(\d+)\s*pp\.(?=\s+[A-Z“\"])", r"\1 pages."),
     _rule(r"\b(\d+)\s*pp\.", r"\1 pages"),
     _rule(r"\bpp\.\s*(\d+)\s*[-–]\s*(\d+)", r"pages \1 to \2"),
     _rule(r"\bpp\.", "pages"),
@@ -171,7 +179,9 @@ NUMBER_RULES: tuple[Rule, ...] = (
     ),
     _rule(r"\$\s*([\d.,]+)", r"\1 dollars"),
     _rule(r"([\d.,]+)\s*%", r"\1 percent"),
-    _rule(r"\s*[→➔>]{1,2}\s*(?=[\d$])", " to "),
+    # ASCII arrows carry a leading hyphen the old character class left stranded,
+    # which read aloud as "26 percent- to 18 percent".
+    _rule(r"\s*(?:-{0,2}>|[→➔]+)\s*(?=[\d$])", " to "),
     _rule(r"\b([\d,]+)\s*\+", r"over \1"),
     _rule(r"\b(\d{4})\s*[–—]\s*(\d{4})\b", r"\1 to \2"),
     _rule(r"\b(\d+)\s*[–—]\s*(\d+)\b", r"\1 to \2"),

@@ -7,3 +7,6 @@ build/
 out/
 .pytest_cache/
 .ruff_cache/
+
+# generated at Pages build time from src/milisten/
+pages/milisten/
