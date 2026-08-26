@@ -20,6 +20,7 @@ const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
 // A browser cannot read another origin. Links go through this extractor; files and
 // typed text never leave the tab. The page says so plainly.
 const READER = "https://r.jina.ai/";
+const MIN_BODY = 400;
 const LEVELS = { 1: "light", 2: "standard", 3: "full" };
 const LEVEL_HINTS = {
   1: "numbers, references and links — best with this voice",
@@ -134,7 +135,7 @@ async function fromUrl(url) {
       const doc = new DOMParser().parseFromString(html, "text/html");
       doc.querySelectorAll("script,style,nav,header,footer,aside").forEach((n) => n.remove());
       const text = (doc.body?.innerText || doc.body?.textContent || "").trim();
-      if (text.length > 400) return text;
+      if (text.length > MIN_BODY && !looksBlocked(text)) return text;
     }
   } catch { /* expected: almost no publisher allows cross-origin reads */ }
 
@@ -145,8 +146,43 @@ async function fromUrl(url) {
       `could not read that link (HTTP ${relayed.status}). Download the page or PDF and drop it in.`);
   }
   const text = (await relayed.text()).trim();
-  if (text.length < 400) throw new Error("that link yielded almost no text — try downloading it");
-  return stripRelayHeader(text);
+  const host = new URL(target).hostname.replace(/^www\./, "");
+
+  // The extractor answers 200 even when the target refused it, reporting the real
+  // status in a Warning line. Trusting relayed.ok alone would read a bot wall's
+  // "enable JavaScript and cookies" page aloud as if it were the article.
+  const upstream = /^Warning:\s*Target URL returned error (\d{3})/m.exec(text);
+  if (upstream) {
+    throw new Error(
+      `${host} refused the request (${upstream[1]}). It blocks automated readers — ` +
+      "open it in a tab, save the PDF, and drop that in instead.");
+  }
+  if (looksBlocked(text)) {
+    throw new Error(
+      `${host} served a bot check rather than the article. Save the page or PDF and drop it in.`);
+  }
+  const body = stripRelayHeader(text);
+  if (body.length < MIN_BODY) {
+    throw new Error(
+      `${host} yielded only ${body.length} characters — probably a wall or a redirect. ` +
+      "Try saving the file and dropping it in.");
+  }
+  return body;
+}
+
+const BLOCK_SIGNS = [
+  "just a moment",
+  "enable javascript and cookies",
+  "attention required",
+  "access denied",
+  "verify you are human",
+  "checking your browser",
+  "captcha",
+];
+
+function looksBlocked(text) {
+  const head = text.slice(0, 1200).toLowerCase();
+  return BLOCK_SIGNS.some((sign) => head.includes(sign));
 }
 
 /** The extractor prefixes a metadata block. Left in, the voice reads out
@@ -314,7 +350,7 @@ async function loadKokoro() {
       select.value = names.includes(keep) ? keep : (names.includes("af_heart") ? "af_heart" : names[0]);
     }
     $("runtime").textContent = "Kokoro · in-browser";
-    return tts;
+    return S.tts;
   })();
   try { return await S.ttsLoading; } finally { S.ttsLoading = null; }
 }
