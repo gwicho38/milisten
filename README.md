@@ -2,12 +2,15 @@
 
 [![CI](https://github.com/gwicho38/milisten/actions/workflows/ci.yml/badge.svg)](https://github.com/gwicho38/milisten/actions/workflows/ci.yml)
 
-Turn articles, papers and regulatory PDFs into chaptered audiobooks you can listen to.
+Turn anything you were going to read into a chaptered audiobook and listen to it
+instead. Articles, papers, PDFs, whatever you have.
 
-Text-to-speech is a solved problem. Reading *legal and regulatory* prose aloud is not.
-Every reader app on the market renders `90 Fed. Reg. 898 (6 Jan. 2025)` as
-"ninety fed reg eight ninety eight six jan two thousand twenty five", and reads URLs
-character by character. milisten fixes the text before the voice ever sees it.
+Text-to-speech is a solved problem. Reading *real documents* aloud is not. Reader
+apps say `90 Fed. Reg. 898 (6 Jan. 2025)` as "ninety fed reg eight ninety eight six
+jan two thousand twenty five", spell URLs out character by character, and run two
+sentences together wherever a PDF wrapped a line. milisten fixes the text before the
+voice ever sees it — and how much fixing it does is a setting, because a good voice
+needs far less help than a robotic one.
 
 ## What changes
 

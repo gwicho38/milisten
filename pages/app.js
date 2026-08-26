@@ -22,8 +22,8 @@ const KOKORO_MODEL = "onnx-community/Kokoro-82M-v1.0-ONNX";
 const READER = "https://r.jina.ai/";
 const LEVELS = { 1: "light", 2: "standard", 3: "full" };
 const LEVEL_HINTS = {
-  1: "citations and URLs only — best with the Kokoro voice",
-  2: "also expands months, latin and page references",
+  1: "numbers, references and links — best with this voice",
+  2: "also expands dates and abbreviations",
   3: "also spells out acronyms — for robotic voices",
 };
 
