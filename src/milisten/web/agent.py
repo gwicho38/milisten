@@ -12,6 +12,7 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from ..library import home
@@ -19,6 +20,8 @@ from .launcher import HOST, secure_home, stable_token
 
 LABEL = "io.lefv.milisten"
 DEFAULT_PORT = 8765
+BOOTSTRAP_ATTEMPTS = 3
+BOOTSTRAP_BACKOFF = 0.6
 
 
 def plist_path() -> Path:
@@ -80,11 +83,29 @@ def install(port: int = DEFAULT_PORT) -> tuple[int, str]:
     uid = os.getuid()
     if is_loaded():
         _launchctl("bootout", f"gui/{uid}/{LABEL}")
-    result = _launchctl("bootstrap", f"gui/{uid}", str(target))
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout).strip()
-        return 69, f"launchctl bootstrap failed: {detail}"
-    return 0, url(port)
+        _await_unloaded()
+
+    # bootout is asynchronous: bootstrapping the same label too soon returns
+    # "Bootstrap failed: 5: Input/output error" while launchd still holds it.
+    result = None
+    for attempt in range(BOOTSTRAP_ATTEMPTS):
+        result = _launchctl("bootstrap", f"gui/{uid}", str(target))
+        if result.returncode == 0:
+            return 0, url(port)
+        if attempt < BOOTSTRAP_ATTEMPTS - 1:
+            time.sleep(BOOTSTRAP_BACKOFF * (attempt + 1))
+
+    detail = (result.stderr or result.stdout).strip() if result else "no output"
+    return 69, f"launchctl bootstrap failed after {BOOTSTRAP_ATTEMPTS} attempts: {detail}"
+
+
+def _await_unloaded(timeout: float = 5.0) -> bool:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not is_loaded():
+            return True
+        time.sleep(0.2)
+    return False
 
 
 def uninstall() -> tuple[int, str]:
