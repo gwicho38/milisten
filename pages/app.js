@@ -432,6 +432,69 @@ $("omni-form").addEventListener("submit", async (e) => {
   }
 });
 
+// Clicking the pill's padding used to focus nothing, so Cmd+V had no target.
+$("omni-form").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) $("omni").focus();
+});
+
+/** A link copied from a page or a document is rich text: the plain-text flavour is
+ *  often the anchor's label, and the href only exists in the text/html flavour.
+ *  Pasting into a bare input would silently give you the label. */
+function urlFromClipboard(dt) {
+  const list = (dt.getData("text/uri-list") || "").trim();
+  const fromList = list.split(/\s+/).find(looksLikeUrl);
+  if (fromList) return fromList;
+
+  const html = dt.getData("text/html") || "";
+  if (html) {
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const href = doc.querySelector("a[href]")?.getAttribute("href") || "";
+    if (looksLikeUrl(href)) return href;
+  }
+
+  const plain = (dt.getData("text/plain") || "").trim();
+  return plain.split(/\s+/).find(looksLikeUrl) || "";
+}
+
+async function handlePaste(e) {
+  const dt = e.clipboardData;
+  if (!dt) return;
+  const url = urlFromClipboard(dt);
+  const plain = (dt.getData("text/plain") || "").trim();
+
+  // Let the browser handle an ordinary short paste into the focused input.
+  if (!url && plain.length < 400 && document.activeElement === $("omni")) return;
+
+  e.preventDefault();
+  try {
+    if (url) {
+      $("omni").value = url;
+      S.raw = await fromUrl(url);
+    } else if (plain.length >= 40) {
+      $("omni").value = `pasted text · ${plain.length.toLocaleString()} chars`;
+      S.raw = plain;
+    } else {
+      $("omni").focus();
+      return;
+    }
+    $("omni").dataset.settled = S.raw.slice(0, 64);
+    normalizeNow();
+    status("ready — press play");
+  } catch (err) {
+    status("");
+    toast(err.message, "error", 9000);
+  }
+}
+
+$("omni").addEventListener("paste", handlePaste);
+// Paste with nothing focused should still work; that is how Cmd+V usually arrives.
+document.addEventListener("paste", (e) => {
+  if (e.target === $("omni")) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA") return;
+  handlePaste(e);
+});
+
 $("attach-btn").addEventListener("click", () => $("file-input").click());
 $("file-input").addEventListener("change", async (e) => {
   const file = e.target.files[0];
