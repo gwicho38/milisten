@@ -43,7 +43,7 @@ def render_area(
     speed: float = 1.0,
     layout: bool = False,
     keep_wav: bool = False,
-    level: int = 3,
+    level: int = 1,
 ) -> Iterator[Progress]:
     destination.mkdir(parents=True, exist_ok=True)
     scratch = workdir(destination, area)

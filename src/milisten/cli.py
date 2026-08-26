@@ -87,8 +87,8 @@ def remove(ref: str) -> None:
 @click.option(
     "--level",
     type=click.IntRange(1, 3),
-    default=3,
-    help="1 light, 2 standard, 3 full. Lower suits a good neural voice.",
+    default=1,
+    help="1 light (default, suits Kokoro), 2 standard, 3 full for robotic voices.",
 )
 def preview(ref: str | None, layout: bool, chars: int, level: int) -> None:
     """Print normalized text without synthesizing. The fastest way to tune rules."""
@@ -123,8 +123,8 @@ def preview(ref: str | None, layout: bool, chars: int, level: int) -> None:
 @click.option(
     "--level",
     type=click.IntRange(1, 3),
-    default=3,
-    help="1 light, 2 standard, 3 full. Lower suits a good neural voice.",
+    default=1,
+    help="1 light (default, suits Kokoro), 2 standard, 3 full for robotic voices.",
 )
 def build(
     area: str | None,
