@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      # kokoro pulls torch, together ~580MB of the install. Both load lazily at
+      # render time, so the suite never touches them — skipping keeps CI light.
+      - name: Install
+        run: >
+          uv sync --python ${{ matrix.python }} --extra dev
+          --no-install-package kokoro --no-install-package torch
+
+      - name: Lint
+        run: uv run --no-sync ruff check src test
+
+      - name: Test
+        run: uv run --no-sync pytest -q
+
+      - name: CLI entry point loads
+        run: uv run --no-sync milisten --help

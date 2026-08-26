@@ -1,5 +1,7 @@
 # milisten
 
+[![CI](https://github.com/gwicho38/milisten/actions/workflows/ci.yml/badge.svg)](https://github.com/gwicho38/milisten/actions/workflows/ci.yml)
+
 Turn articles, papers and regulatory PDFs into chaptered audiobooks you can listen to.
 
 Text-to-speech is a solved problem. Reading *legal and regulatory* prose aloud is not.
